@@ -1,78 +1,99 @@
-use std::{io, thread, time::Duration};
-use tui::{
-    backend::CrosstermBackend,
-    widgets::{Widget, Block, Borders, Dataset, Axis, Chart, GraphType, BarChart},
-    layout::{Layout, Constraint, Direction, Rect},
-    Terminal, style::{Style, Color, Modifier}, symbols::{Marker, self}, text::Span
-};
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
+    event::{DisableMouseCapture, EnableMouseCapture},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use regex::Regex;
+use std::{fs, io, process::Command, thread, time::Duration};
+use tui::{
+    backend::CrosstermBackend,
+    layout::{Constraint, Direction, Layout},
+    style::{Color, Modifier, Style},
+    widgets::{BarChart, Block, Borders},
+    Terminal,
+};
+
+#[derive(Debug, Clone)]
+struct GitGraph {
+    logs: String,
+    data:Vec<(String,i32)>
+}
+
+impl GitGraph {
+    fn new(logs: String) -> Self {
+        GitGraph { logs,data:vec![] }
+    }
+
+    fn graph_builder(self){
+        //let re=Regex::new();
+        let log_data:Vec<&str>=self.logs.split("").collect();
+        println!("{:?}",log_data);
+    }
+}
 
 fn main() -> Result<(), io::Error> {
-    let datasets = vec![
-    Dataset::default()
-        .name("data1")
-        .marker(symbols::Marker::Dot)
-        .graph_type(GraphType::Scatter)
-        .style(Style::default().fg(Color::White))
-        .data(&[(0.0, 5.0), (1.0, 6.0), (1.5, 6.434)]),
-    Dataset::default()
-        .name("data2")
-        .marker(symbols::Marker::Braille)
-        .graph_type(GraphType::Line)
-        .style(Style::default().fg(Color::Magenta))
-        .data(&[(4.0, 5.0), (5.0, 8.0), (7.66, 13.5)]),
-];
     // setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
+    let cmd = Command::new("git")
+        .args(["log","--date=short","--pretty=format:%ad","--since=15.days"])
+        .output()
+        .unwrap();
 
-    terminal.draw(|f| {
-        let size = f.size();
-        let block = Block::default()
-            .title("Block")
-            .borders(Borders::ALL);
-            let bar_chart=BarChart::default()
-            .block(Block::default().title("BarChart").borders(Borders::ALL))
-            .bar_width(3)
-            .bar_gap(1)
-            .bar_style(Style::default().fg(Color::Green))
-            .value_style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD))
-            .label_style(Style::default().fg(Color::White))
-            .data(&[("B0", 0), ("B1", 2), ("B2", 2), ("B3", 3)])
-            .max(10);
-        f.render_widget(block, size);
+    let contents = String::from_utf8_lossy(&cmd.stdout).to_string();
+    println!("{:?}", contents.split(" ").collect::<Vec<&str>>());
+    let git_graph = GitGraph::new(contents);
+    println!("{:?}", git_graph);
+    /*
+        terminal.draw(|f| {
+            let size = f.size();
+            let block = Block::default().title("Git History").borders(Borders::ALL);
+            f.render_widget(block, size);
 
-        let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .margin(4)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
-        .split(f.size());
-        let top_chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
-        .split(chunks[0]);
-        f.render_widget(bar_chart.clone(), top_chunks[0]);
-        f.render_widget(bar_chart, top_chunks[1]);
-       // f.render_widget(block2, size);
-    })?;
 
-    thread::sleep(Duration::from_millis(5000));
+            let bar_chart = BarChart::default()
+                .block(Block::default().title("BarChart").borders(Borders::ALL))
+                .bar_width(3)
+                .bar_gap(1)
+                .bar_style(Style::default().fg(Color::Green))
+                .value_style(
+                    Style::default()
+                        .fg(Color::White)
+                        .add_modifier(Modifier::BOLD),
+                )
+                .label_style(Style::default().fg(Color::White))
+                .data(&[("B0", 0), ("B1", 2), ("B2", 2), ("B3", 3)])
+                .max(10);
 
-    // restore terminal
-    disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
-    terminal.show_cursor()?;
 
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .margin(4)
+                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+                .split(f.size());
+
+            let top_chunks = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+                .split(chunks[0]);
+
+            f.render_widget(bar_chart.clone(), top_chunks[0]);
+            f.render_widget(bar_chart, top_chunks[1]);
+        })?;
+
+        thread::sleep(Duration::from_millis(5000));
+
+        // restore terminal
+        disable_raw_mode()?;
+        execute!(
+            terminal.backend_mut(),
+            LeaveAlternateScreen,
+            DisableMouseCapture
+        )?;
+        terminal.show_cursor()?;
+    */
     Ok(())
 }

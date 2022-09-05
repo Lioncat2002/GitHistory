@@ -29,8 +29,13 @@ impl<'a> GitGraph<'a> {
         let mut count = 0;
         for d in &self.data {
             let key = &*d.0;
-            self.graph_data[count] = (key, d.1);
-            count += 1;
+            if count<15{
+                self.graph_data[count] = (key, d.1);
+                count += 1;
+            }else{
+                break;
+            }
+            
         }
         self.graph_data.sort();
         self.graph_data.reverse();
